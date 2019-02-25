@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/wait.h>
+#include <errno.h>
 
 int main(int argc, char *argv[]){
     if( argc == 1){
@@ -30,7 +32,7 @@ int main(int argc, char *argv[]){
         count1++;
     }
     
-    printf("count1: %d\n",count1);  
+    //printf("count1: %d\n",count1);  
     if( count1 != 0 ){
         strcpy(cmd1,args1[0]);                  //catch shell command
         cmd1[ strlen(args1[0])+1 ] = '\0';
@@ -52,7 +54,7 @@ int main(int argc, char *argv[]){
         count2++;
     }
     
-    printf("count2: %d\n",count2);
+    //printf("count2: %d\n",count2);
     if( count2 != 0 ){
         strcpy(cmd2,args2[0]);
         cmd2[ strlen(args2[0])+1 ] = '\0';
@@ -63,7 +65,7 @@ int main(int argc, char *argv[]){
         noArg2 = true;
     }
 
-
+/*
     for( int j =0;j<count1;j++){            //printing for checking
         printf("%s\n",args1[j]);
     }
@@ -73,33 +75,51 @@ int main(int argc, char *argv[]){
     }
 
     printf("PROGRAM OUTPUT:\n");
+*/
 //-----------------------------------------------------------------------------------
 
-int rdr;
-int wrtr;
+if( noArg2 == true){
+    if(execvp(cmd1,args1)){
+         fprintf(stderr, "%s\n", strerror( errno ));
+    }
+}
+else if (noArg1 == true)
+{
+    if(execvp(cmd2,args2)){
+         fprintf(stderr, "%s\n", strerror( errno ));
+    }
+}
+
 int fd[2];
-pipe(fd);
-
-/*
-close(0);
-dup(rdr);    //setting read end of pipe to be stdin
-close(1);
-dup(wrtr);  //setting writer of pipe to be stdout
-printf("rdr: %d\n",rdr);
-printf("wrtr: %d\n",wrtr);
-*/
-
-if( fork() ){   //parent <arg1>
-    close(fd[0]);          //close the read end of the pipe
-    dup2(fd[1],1);      //change stdout to be the write end of the pipe
-    execvp(cmd1,args1);
-}
-else{       //child
-    close(fd[1]);
-    dup2(fd[0],0);      //change stdin to be the read end of the pipe
-    execvp(cmd2,args2);
-
+if(pipe(fd)){
+    fprintf(stderr, "Pipe error: %s\n", strerror( errno ));
+    return -1;
 }
 
+
+
+if( fork() ){   //parent : <arg2>
+    if(close(fd[1]))
+        fprintf(stderr, "%s\n", strerror( errno ));
+    int check = dup2(fd[0],0);      //change stdin to be the read end of the pipe
+    if( check == -1)
+        fprintf(stderr, "%s\n", strerror( errno ));
+    if(wait(NULL) == -1){           ////wait for child arg1 to complete
+         fprintf(stderr, "%s\n", strerror( errno ));
+    }         
+    if(execvp(cmd2,args2)){
+         fprintf(stderr, "%s\n", strerror( errno ));
+    }
+}
+else{       //child : <arg1>
+    if(close(fd[0]))          //close the read end of the pipe
+        fprintf(stderr, "%s\n", strerror( errno ));
+    int check = dup2(fd[1],1);      //change stdout to be the write end of the pipe
+    if( check == -1)
+        fprintf(stderr, "%s\n", strerror( errno ));
+    if(execvp(cmd1,args1)){
+         fprintf(stderr, "%s\n", strerror( errno ));
+    }
+}
 
 }
