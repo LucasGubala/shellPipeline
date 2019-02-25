@@ -19,7 +19,7 @@ int main(int argc, char *argv[]){
 
     //printf("testing");
 
-    int count1 =0;
+    int count1 =0;                          //<ARG1>
     for ( int i = 1 ; i < argc ; i++ ){     //parse arguments into two chunks <arg1> and <arg2>
         if(strcmp(argv[i],":") == 0){       //connector reached
             //count1++;
@@ -30,20 +30,21 @@ int main(int argc, char *argv[]){
         count1++;
     }
     
-    //printf("count1: %d\n",count1);  
+    printf("count1: %d\n",count1);  
     if( count1 != 0 ){
         strcpy(cmd1,args1[0]);                  //catch shell command
         cmd1[ strlen(args1[0])+1 ] = '\0';
-    //printf("cmd1: %s\n",cmd1);
+        //printf("cmd1: %s\n",cmd1);
+        args1[count1] = NULL; 
     }
     else{
         noArg1 = true;
     }
 
-    int count2 =0;
+    int count2 =0;                          //<ARG2>
     for( int x =(count1+2); x < argc; x++){
         if(strcmp(argv[x],":") == 0){
-            printf("connector\n");
+            //printf("connector\n");
             break;
         }
 
@@ -51,11 +52,12 @@ int main(int argc, char *argv[]){
         count2++;
     }
     
-    //printf("count2: %d\n",count2);
+    printf("count2: %d\n",count2);
     if( count2 != 0 ){
         strcpy(cmd2,args2[0]);
         cmd2[ strlen(args2[0])+1 ] = '\0';
-    //printf("cmd2: %s\n",cmd2);
+        //printf("cmd2: %s\n",cmd2);
+        args2[count2] = NULL;
     }
     else{
         noArg2 = true;
@@ -69,6 +71,35 @@ int main(int argc, char *argv[]){
     for( int j =0;j<count2;j++){
         printf("%s\n",args2[j]);
     }
-    
+
+    printf("PROGRAM OUTPUT:\n");
+//-----------------------------------------------------------------------------------
+
+int rdr;
+int wrtr;
+int fd[2];
+pipe(fd);
+
+/*
+close(0);
+dup(rdr);    //setting read end of pipe to be stdin
+close(1);
+dup(wrtr);  //setting writer of pipe to be stdout
+printf("rdr: %d\n",rdr);
+printf("wrtr: %d\n",wrtr);
+*/
+
+if( fork() ){   //parent <arg1>
+    close(fd[0]);          //close the read end of the pipe
+    dup2(fd[1],1);      //change stdout to be the write end of the pipe
+    execvp(cmd1,args1);
+}
+else{       //child
+    close(fd[1]);
+    dup2(fd[0],0);      //change stdin to be the read end of the pipe
+    execvp(cmd2,args2);
+
+}
+
 
 }
